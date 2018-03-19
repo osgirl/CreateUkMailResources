@@ -16,7 +16,7 @@ public class SoapFileEntry {
 	private Integer noOfAddressLines;
 	private String postcode;
 	private String product;
-	private Double weight;
+	private Integer weight;
 	private String spare8;
 	
 	public SoapFileEntry(String runNo, String jid, Integer pid, String appName, String batchRef, String scid,
@@ -37,7 +37,7 @@ public class SoapFileEntry {
 		this.noOfAddressLines = noOfAddressLines;
 		this.postcode = postcode;
 		this.product = product;
-		this.weight = weight;
+		this.weight = (int) weight.doubleValue();
 		this.spare8 = spare8;
 	}
 	
@@ -47,7 +47,7 @@ public class SoapFileEntry {
 				this.itemId, this.format, this.machineable, this.mailType, this.noOfAddressLines, 
 				this.postcode, this.product, this.spare8, this.weight, this.runNo, this.jid, this.pid);
 	}
-	public String getRunNo() {
+	/*public String getRunNo() {
 		return runNo;
 	}
 	public void setRunNo(String runNo) {
@@ -148,5 +148,5 @@ public class SoapFileEntry {
 	}
 	public void setScid(String scid) {
 		this.scid = scid;
-	}
+	}*/
 }

@@ -13,6 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import uk.gov.dvla.osg.common.classes.BatchType;
 import uk.gov.dvla.osg.common.classes.Customer;
 import uk.gov.dvla.osg.common.classes.Product;
 import uk.gov.dvla.osg.common.config.PostageConfiguration;
@@ -25,8 +26,6 @@ public class CreateUkMailResources {
 	private String fAccNo = "";
 	private String mTrayLookup = "";
 	private String fTrayLookup = "";
-	private float weight;
-	private int minimumTrayVolume = 20;
 	private String itemIdLookup = "";
 	private String morristonNextItemDate;
 	private String fforestfachNextItemDate;
@@ -63,7 +62,6 @@ public class CreateUkMailResources {
 		fAccNo = postConfig.getUkmFAcc();
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
-		minimumTrayVolume = postConfig.getUkmMinimumTrayVolume();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
 		this.actualProduct = Product.valueOf(actualProduct);
 		this.ukMailManifestArchivePath = postConfig.getUkmManifestArchive();
@@ -185,10 +183,10 @@ public class CreateUkMailResources {
 						getPostCode(customer), postConfig.getMmXmlProduct(), customer.getWeight(),
 						ukmm.get(index).getAltRef());
 
-				//Setting MM barcode content
-				customer.setMmBarcodeContent(getMmBarcodeContent(getItemId(), customer));
 				sf.add(soapFileEntry);
 			}
+			//Setting MM barcode content
+			customer.setMmBarcodeContent(getMmBarcodeContent(getItemId(), customer));
 		}
 
 		PrintWriter pw1 = fh.createOutputFileWriter(soapFilePath);
@@ -264,39 +262,70 @@ public class CreateUkMailResources {
 	}
 
 	private void createUkMailManifest(ArrayList<Customer> ukMailCustomer) {
-		Integer itemCount = 0;
-		int nextCustomerIdx = 0;
 		Integer startPID = 1;
 		Integer endPID = 1;
-		Customer nextCustomer = null;
 		int currentTrayItems = 0;
 		double currentTrayWeight = 0;
 		boolean firstCustomer = true;
 		Customer previousCustomer = null;
 		int lastCustomer = ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
-
+		int index = 0;
 		for (Customer customer : ukMailCustomers) {
+			index++;
 			if (firstCustomer) {
 				startPID = customer.getSequenceInChild();
 				firstCustomer = false;
 			} else {
 				if (customer.isSot()) {
+					// Calculate manifest values for for the pevious tray
+
+					// End piece ID needs to be calculated for multi doc
+					if (previousCustomer.isBatchType(BatchType.MULTI)) {
+						// we are on the SOT & want to check the penultimate customer of the previous tray
+						int prevCustIndex = index - 2;
+						boolean found = false;
+						while (prevCustIndex > 0 && !found) {
+							if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
+								endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
+								found = true;
+							}
+							prevCustIndex--;
+						}
+					} else {
+						endPID = previousCustomer.getSequenceInChild();
+					}
 					UkMailManifest manifest = new UkMailManifest(previousCustomer.getTenDigitJid(),
-							previousCustomer.getMsc(), currentTrayItems, startPID,
-							previousCustomer.getSequenceInChild(), previousCustomer.getAppName(), getTrayId(),
-							getProductCode(), getManifestFilename(previousCustomer), currentTrayWeight, getAccountNo(),
-							runNo, runDate, getFormat());
+							previousCustomer.getMsc(), currentTrayItems, startPID, endPID,
+							previousCustomer.getAppName(), getTrayId(), getProductCode(),
+							getManifestFilename(previousCustomer), currentTrayWeight, getAccountNo(), runNo, runDate,
+							getFormat());
 					manifestList.add(manifest);
 					startPID = customer.getSequenceInChild();
 					currentTrayItems = 0;
 					currentTrayWeight = 0;
 				} else if (customer.getOriginalIdx() == lastCustomer) {
+					// We are on the last customer - set values for final (current) tray
 					currentTrayWeight += customer.getWeight();
-					//currentTrayItems++;
+					// End piece ID needs to be calculated for multi doc
+					if (customer.isBatchType(BatchType.MULTI)) {
+						// we want to check values from the previous customer of the current tray
+						int prevCustIndex = index - 1;
+						boolean found = false;
+						while (prevCustIndex > 0 && !found) {
+							if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
+								endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
+								found = true;
+							}
+							prevCustIndex--;
+						}
+					} else {
+						endPID = previousCustomer.getSequenceInChild();
+					}
 					UkMailManifest manifest = new UkMailManifest(customer.getTenDigitJid(), customer.getMsc(),
-							currentTrayItems, startPID, customer.getSequenceInChild(), customer.getAppName(),
-							getTrayId(), getProductCode(), getManifestFilename(customer), currentTrayWeight,
-							getAccountNo(), runNo, runDate, getFormat());
+							currentTrayItems, startPID, endPID, customer.getAppName(), getTrayId(), getProductCode(),
+							getManifestFilename(customer), currentTrayWeight, getAccountNo(), runNo, runDate,
+							getFormat());
+
 					manifestList.add(manifest);
 				}
 			}
