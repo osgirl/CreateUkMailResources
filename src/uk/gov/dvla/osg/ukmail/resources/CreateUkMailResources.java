@@ -3,10 +3,11 @@ package uk.gov.dvla.osg.ukmail.resources;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
+//import java.util.HashMap;
 import java.util.HashSet;
 
 import org.apache.commons.lang3.StringUtils;
@@ -47,7 +48,7 @@ public class CreateUkMailResources {
 	private ArrayList<UkMailManifest> manifestList = new ArrayList<UkMailManifest>();
 	private ArrayList<Customer> ukMailCustomers;
 	private HashSet<String> ukMailManifestPaths;
-	private HashMap<String, Integer> ukmMap = null;
+	//private HashMap<String, Integer> ukmMap = null;
 	private ArrayList<Customer> input;
 
 	private boolean processMailmark = false;
@@ -70,8 +71,9 @@ public class CreateUkMailResources {
 		this.prodConfig = ProductionConfiguration.getInstance();
 		this.postConfig = postConfig;
 		this.runNo = runNo;
-		this.soapFilePath = postConfig.getUkmSoapDestination() + "SOAP.DAT";
-		this.soapFileArchivePath = postConfig.getUkmSoapArchive() + "SOAP_ARCH.DAT";
+		String jid = customers.get(0).getTenDigitJid().toString();
+		this.soapFilePath = postConfig.getUkmSoapDestination() + jid + ".SOAPFILE.DAT";
+		this.soapFileArchivePath = postConfig.getUkmSoapArchive() + jid + ".SOAPFILE.DAT";
 		//Lookup the next item reference and date for each account number format of these files is:
 		//DDMMYY:NEXT_REF_NUMBER (190815:154)
 		try {
@@ -205,7 +207,9 @@ public class CreateUkMailResources {
 		String customerContent = "";
 		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
 			// TODO: REPLACE WITH DATE AND APP NAME
-			customerContent = String.format("%-5.5s", runNo) + cus.getTenDigitJid() + cus.getSequenceInChild();
+			DateFormat dateFormat = new SimpleDateFormat("ddMMyy");
+			customerContent = dateFormat.format(new Date()) + cus.getAppName(); //310318V11
+			//customerContent = String.format("%-5.5s", runNo) + cus.getTenDigitJid() + cus.getSequenceInChild();
 		} else {
 			customerContent = cus.getMmCustomerContent();
 		}
@@ -268,7 +272,7 @@ public class CreateUkMailResources {
 		double currentTrayWeight = 0;
 		boolean firstCustomer = true;
 		Customer previousCustomer = null;
-		int lastCustomer = ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
+		int lastCustomer = ukMailCustomers.isEmpty() ? 0 : ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
 		int index = 0;
 		for (Customer customer : ukMailCustomers) {
 			index++;
