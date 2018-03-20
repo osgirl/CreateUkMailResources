@@ -213,7 +213,13 @@ public class CreateUkMailResources {
 		} else {
 			customerContent = cus.getMmCustomerContent();
 		}
-
+		
+		// EXAMPLES
+		
+		// |JGB |0|1|9|1000446|86918570|NP109EX1U|0|       |      |7    1018987023871       |
+		
+		// |JGB |0|1|9|1000446|86783666|NP109EX1U|0|       |      |200318HRC                |
+		
 		String str = String.format("%-4.4s%-1.1s%-1.1s%-1.1s%-7.7s%-8.8s%-9.9s%-1.1s%-7.7s%-6.6s%-25.25s",
 				postConfig.getMmUpuCountryId(), postConfig.getMmInfoType(), postConfig.getMmVersionId(),
 				postConfig.getMmClass(), postConfig.getMmScid(), itemId,
