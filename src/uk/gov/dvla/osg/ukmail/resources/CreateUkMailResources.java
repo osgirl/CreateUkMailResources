@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Date;
 //import java.util.HashMap;
 import java.util.HashSet;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -49,19 +50,19 @@ public class CreateUkMailResources {
 	private ArrayList<UkMailManifest> manifestList = new ArrayList<UkMailManifest>();
 	private ArrayList<Customer> ukMailCustomers;
 	private HashSet<String> ukMailManifestPaths;
-	//private HashMap<String, Integer> ukmMap = null;
 	private ArrayList<Customer> input;
 
 	private boolean processMailmark = false;
 	private boolean processUkMail = false;
 
-	public CreateUkMailResources(ArrayList<Customer> customers, PostageConfiguration postConfig, String runNo,
-			String actualProduct) {
+	public CreateUkMailResources(ArrayList<Customer> customers, String runNo, String actualProduct) {
 
-		this.input = customers;
+		//this.input = customers;
+		this.prodConfig = ProductionConfiguration.getInstance();
+		this.postConfig = PostageConfiguration.getInstance();
 		this.resourcePath = postConfig.getUkmResourcePath();
-		mAccNo = postConfig.getUkmMAcc();
-		fAccNo = postConfig.getUkmFAcc();
+		this.mAccNo = postConfig.getUkmMAcc();
+		this.fAccNo = postConfig.getUkmFAcc();
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
@@ -69,8 +70,6 @@ public class CreateUkMailResources {
 		this.ukMailManifestArchivePath = postConfig.getUkmManifestArchive();
 		this.runDate = new SimpleDateFormat("ddMMyy").format(new Date());
 		this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
-		this.prodConfig = ProductionConfiguration.getInstance();
-		this.postConfig = postConfig;
 		this.runNo = runNo;
 		String jid = customers.get(0).getTenDigitJid().toString();
 		this.soapFilePath = postConfig.getUkmSoapDestination() + jid + ".SOAPFILE.DAT";
@@ -128,25 +127,17 @@ public class CreateUkMailResources {
 				ukMailCustomers = getUkMailCustomers(input);
 				//Cleanup from any previously run attempts
 				cleanup();
-				
 				//Main methods
 				createUkMailManifest(ukMailCustomers);
-
-				//createKickfile(manifestList, ukMailCustomers);
 
 				if (processMailmark) {
 					//Also creates barcode lookup file
 					createSOAPfile(manifestList, ukMailCustomers);
-
 					//Update item numbers
 					fh.writeReplace(resourcePath + itemIdLookup, "" + nextItemId++);
-
-					//Update bag reference
-
 					//Could be a different path for a different account number
 					fh.writeReplace(mTrayLookup, runDate.toString() + ":" + morristonNextItemRef);
 					fh.writeReplace(fTrayLookup, runDate.toString() + ":" + fforestfachNextItemRef);
-
 				}
 			} else {
 				LOGGER.info("No UKMAIL customers to process");
@@ -188,7 +179,7 @@ public class CreateUkMailResources {
 						customer.getSequenceInChild(), postConfig.getMmAppname(), batchRef, postConfig.getMmScid(),
 						postConfig.getMmClass(), customer.getDps(), getItemId(), postConfig.getMmXmlFormat(),
 						postConfig.getMmMachineable(), postConfig.getMmMailType(), getNumberOfAddressLines(customer),
-						getPostCode(customer), postConfig.getMmXmlProduct(), customer.getWeight(),
+						formatPostCode(customer), postConfig.getMmXmlProduct(), customer.getWeight(),
 						ukmm.get(index).getAltRef());
 
 				sf.add(soapFileEntry);
@@ -234,27 +225,6 @@ public class CreateUkMailResources {
 	}
 	
 	private String getMmBarcodeContent(String itemId, Customer cus) {
-/*		String customerContent = "";
-		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
-			// TODO: REPLACE WITH DATE AND APP NAME
-			Date dateFormat = null;
-			try {
-				dateFormat = new SimpleDateFormat("ddMMyy").parse(cus.getRunDate());
-				customerContent = dateFormat + cus.getAppName(); //310318V11
-				
-			} catch (ParseException ex) {
-				LOGGER.fatal("Unable to read runDate");
-			}
-			
-			//customerContent = String.format("%-5.5s", runNo) + cus.getTenDigitJid() + cus.getSequenceInChild();
-		} else {
-			customerContent = cus.getMmCustomerContent();
-		}*/
-		
-		// EXAMPLES
-		
-		// |JGB |0|1|9|1000446|86918570|NP109EX1U|0|       |      |7    1018987023871       |
-		
 		return String.format("%-4.4s%-1.1s%-1.1s%-1.1s%-7.7s%-8.8s%-9.9s%-1.1s%-7.7s%-6.6s%-25.25s",
 				postConfig.getMmUpuCountryId(), postConfig.getMmInfoType(), postConfig.getMmVersionId(),
 				postConfig.getMmClass(), postConfig.getMmScid(), itemId,
@@ -262,7 +232,7 @@ public class CreateUkMailResources {
 				postConfig.getMmReturnMailPc(), postConfig.getMmReserved(), cus.getMmCustomerContent());
 	}
 
-	private String getPostCode(Customer customer) {
+	private String formatPostCode(Customer customer) {
 		return String.format("%-7s", customer.getPostcode()).replace(" ", "").replace(" ", "0");
 	}
 
@@ -321,8 +291,6 @@ public class CreateUkMailResources {
 				firstCustomer = false;
 			} else {
 				if (customer.isSot()) {
-					// Calculate manifest values for for the pevious tray
-
 					// End piece ID needs to be calculated for multi doc
 					if (previousCustomer.isBatchType(BatchType.MULTI)) {
 						// we are on the SOT & want to check the penultimate customer of the previous tray
@@ -338,6 +306,7 @@ public class CreateUkMailResources {
 					} else {
 						endPID = previousCustomer.getSequenceInChild();
 					}
+					// Calculate manifest values for for the pevious tray
 					UkMailManifest manifest = new UkMailManifest(previousCustomer.getTenDigitJid(),
 							previousCustomer.getMsc(), currentTrayItems, startPID, endPID,
 							previousCustomer.getAppName(), getTrayId(), getProductCode(),
@@ -423,20 +392,13 @@ public class CreateUkMailResources {
 	}
 
 	public ArrayList<Customer> getUkMailCustomers(ArrayList<Customer> allCustomers) {
+		return allCustomers.stream()
+				.filter( this::isUkMailCustomer)
+				.collect(Collectors.toCollection(ArrayList::new));
+	}
 
-		/*
-		 * return allCustomers.stream().filter( customer -> customer.getProduct().equals(Product.MM) || customer.getProduct().equals(Product.OCR)) .collect(Collectors.toCollection(ArrayList::new));
-		 */
-
-		ArrayList<Customer> filtered = new ArrayList<Customer>();
-		for (Customer customer : allCustomers) {
-
-			if (Product.MM.equals(customer.getProduct()) || Product.OCR.equals(customer.getProduct())) {
-				filtered.add(customer);
-			}
-		}
-		return filtered;
-
+	private boolean isUkMailCustomer(Customer customer) {
+		return Product.MM.equals(customer.getProduct()) || Product.OCR.equals(customer.getProduct());
 	}
 
 }
