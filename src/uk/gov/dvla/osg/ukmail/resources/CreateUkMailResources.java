@@ -4,6 +4,7 @@ package uk.gov.dvla.osg.ukmail.resources;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -116,13 +117,18 @@ public class CreateUkMailResources {
 	}
 
 	public void method() {
+		
+		for (Customer customer : input) {
+			setMMCustomerContent(customer);
+		}
+		
 		try {
 			if (processMailmark || processUkMail) {
 				//Create a sub-set of customers that are to be sent via UKMAIL
 				ukMailCustomers = getUkMailCustomers(input);
 				//Cleanup from any previously run attempts
 				cleanup();
-
+				
 				//Main methods
 				createUkMailManifest(ukMailCustomers);
 
@@ -202,30 +208,58 @@ public class CreateUkMailResources {
 		fh.closeFile(pw2);
 
 	}
-
-	private String getMmBarcodeContent(String itemId, Customer cus) {
+	private void setMMCustomerContent(Customer cus) {
 		String customerContent = "";
 		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
 			// TODO: REPLACE WITH DATE AND APP NAME
-			DateFormat dateFormat = new SimpleDateFormat("ddMMyy");
-			customerContent = dateFormat.format(new Date()) + cus.getAppName(); //310318V11
+			//Date dateFormat = null;
+			try {
+				DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
+				DateFormat toFormat = new SimpleDateFormat("ddMMyy");
+				//System.out.println(toFormat.format(fromFormat.parse(cus.getRunDate())));
+				String date = toFormat.format(fromFormat.parse(cus.getRunDate()));
+				customerContent = date + cus.getAppName(); //310318V11
+				cus.setMmCustomerContent(customerContent);
+			} catch (ParseException ex) {
+				LOGGER.fatal("Unable to read runDate");
+			}			
+		}
+		
+		customerContent = cus.getMmCustomerContent();		
+		String str = String.format("%045d%-25.25s", new Integer(0), customerContent);	
+		cus.setMmBarcodeContent(str);
+		// EXAMPLES
+		// |00000000000000000000000000000000000000000000000|200318HRC                |
+		
+	}
+	
+	private String getMmBarcodeContent(String itemId, Customer cus) {
+/*		String customerContent = "";
+		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
+			// TODO: REPLACE WITH DATE AND APP NAME
+			Date dateFormat = null;
+			try {
+				dateFormat = new SimpleDateFormat("ddMMyy").parse(cus.getRunDate());
+				customerContent = dateFormat + cus.getAppName(); //310318V11
+				
+			} catch (ParseException ex) {
+				LOGGER.fatal("Unable to read runDate");
+			}
+			
 			//customerContent = String.format("%-5.5s", runNo) + cus.getTenDigitJid() + cus.getSequenceInChild();
 		} else {
 			customerContent = cus.getMmCustomerContent();
-		}
+		}*/
 		
 		// EXAMPLES
 		
 		// |JGB |0|1|9|1000446|86918570|NP109EX1U|0|       |      |7    1018987023871       |
 		
-		// |JGB |0|1|9|1000446|86783666|NP109EX1U|0|       |      |200318HRC                |
-		
-		String str = String.format("%-4.4s%-1.1s%-1.1s%-1.1s%-7.7s%-8.8s%-9.9s%-1.1s%-7.7s%-6.6s%-25.25s",
+		return String.format("%-4.4s%-1.1s%-1.1s%-1.1s%-7.7s%-8.8s%-9.9s%-1.1s%-7.7s%-6.6s%-25.25s",
 				postConfig.getMmUpuCountryId(), postConfig.getMmInfoType(), postConfig.getMmVersionId(),
 				postConfig.getMmClass(), postConfig.getMmScid(), itemId,
 				cus.getPostcode().replace(" ", "") + cus.getDps(), postConfig.getMmReturnMailFlag(),
-				postConfig.getMmReturnMailPc(), postConfig.getMmReserved(), customerContent);
-		return str;
+				postConfig.getMmReturnMailPc(), postConfig.getMmReserved(), cus.getMmCustomerContent());
 	}
 
 	private String getPostCode(Customer customer) {
