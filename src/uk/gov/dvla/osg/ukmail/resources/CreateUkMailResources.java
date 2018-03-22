@@ -55,9 +55,9 @@ public class CreateUkMailResources {
 	private boolean processMailmark = false;
 	private boolean processUkMail = false;
 
-	public CreateUkMailResources(ArrayList<Customer> customers, String runNo, String actualProduct) {
+	public CreateUkMailResources(ArrayList<Customer> customers, String runNo, Product actualProduct) {
 
-		//this.input = customers;
+		this.input = customers;
 		this.prodConfig = ProductionConfiguration.getInstance();
 		this.postConfig = PostageConfiguration.getInstance();
 		this.resourcePath = postConfig.getUkmResourcePath();
@@ -66,7 +66,7 @@ public class CreateUkMailResources {
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
-		this.actualProduct = Product.valueOf(actualProduct);
+		this.actualProduct = actualProduct;
 		this.ukMailManifestArchivePath = postConfig.getUkmManifestArchive();
 		this.runDate = new SimpleDateFormat("ddMMyy").format(new Date());
 		this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
@@ -111,8 +111,8 @@ public class CreateUkMailResources {
 		}
 
 		//Check to see if this application requires UKMAIL resources
-		processUkMail = !actualProduct.equals("UNSORTED");
-		processMailmark = actualProduct.equals("MM");
+		processUkMail = !actualProduct.equals(Product.UNSORTED);
+		processMailmark = actualProduct.equals(Product.MM);
 	}
 
 	public void method() {
@@ -134,7 +134,7 @@ public class CreateUkMailResources {
 					//Also creates barcode lookup file
 					createSOAPfile(manifestList, ukMailCustomers);
 					//Update item numbers
-					fh.writeReplace(resourcePath + itemIdLookup, "" + nextItemId++);
+					fh.writeReplace(resourcePath + itemIdLookup, Integer.toString(nextItemId++));
 					//Could be a different path for a different account number
 					fh.writeReplace(mTrayLookup, runDate.toString() + ":" + morristonNextItemRef);
 					fh.writeReplace(fTrayLookup, runDate.toString() + ":" + fforestfachNextItemRef);
@@ -202,8 +202,6 @@ public class CreateUkMailResources {
 	private void setMMCustomerContent(Customer cus) {
 		String customerContent = "";
 		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
-			// TODO: REPLACE WITH DATE AND APP NAME
-			//Date dateFormat = null;
 			try {
 				DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
 				DateFormat toFormat = new SimpleDateFormat("ddMMyy");
@@ -219,7 +217,7 @@ public class CreateUkMailResources {
 		customerContent = cus.getMmCustomerContent();		
 		String str = String.format("%045d%-25.25s", new Integer(0), customerContent);	
 		cus.setMmBarcodeContent(str);
-		// EXAMPLES
+		// EXAMPLE
 		// |00000000000000000000000000000000000000000000000|200318HRC                |
 		
 	}
@@ -276,14 +274,16 @@ public class CreateUkMailResources {
 	}
 
 	private void createUkMailManifest(ArrayList<Customer> ukMailCustomer) {
-		Integer startPID = 1;
-		Integer endPID = 1;
+		int startPID = 1;
+		int endPID = 1;
 		int currentTrayItems = 0;
 		double currentTrayWeight = 0;
 		boolean firstCustomer = true;
 		Customer previousCustomer = null;
+		
 		int lastCustomer = ukMailCustomers.isEmpty() ? 0 : ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
 		int index = 0;
+		
 		for (Customer customer : ukMailCustomers) {
 			index++;
 			if (firstCustomer) {
@@ -361,16 +361,16 @@ public class CreateUkMailResources {
 	private String getManifestFilename(Customer customer) {
 		String productionArea = postConfig.getUkmConsignorDestinationDepartment();
 		String mailingSite = prodConfig.getMailingSite().toUpperCase();
-		return mailingSite + "." + productionArea + "." + customer.getSelectorRef() + "." + runNo + "."
-				+ manifestTimestamp + ".DAT";
+		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getSelectorRef(), 
+										runNo, manifestTimestamp).concat(".DAT");
 	}
 
 	private String getProductCode() {
-		return actualProduct.name().equals("MM") ? postConfig.getMmProduct() : postConfig.getOcrProduct();
+		return actualProduct.equals(Product.MM) ? postConfig.getMmProduct() : postConfig.getOcrProduct();
 	}
 
 	private String getFormat() {
-		return actualProduct.name().equalsIgnoreCase("MM") ? postConfig.getMmFormat() : postConfig.getOcrFormat();
+		return actualProduct.equals(Product.MM) ? postConfig.getMmFormat() : postConfig.getOcrFormat();
 	}
 
 	private Integer getTrayId() {
