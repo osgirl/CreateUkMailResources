@@ -32,8 +32,7 @@ public class CreateUkMailResources {
 	private String itemIdLookup = "";
 	private String morristonNextItemDate;
 	private String fforestfachNextItemDate;
-	private String ukMailManifestConsignorPath;
-	private String ukMailManifestArchivePath;
+	private String consignorFileArchivePath;
 	private String soapFilePath;
 	private String soapFileArchivePath;
 	private String runNo;
@@ -55,7 +54,9 @@ public class CreateUkMailResources {
 	private boolean processMailmark = false;
 	private boolean processUkMail = false;
 
-	public CreateUkMailResources(ArrayList<Customer> customers, String runNo, Product actualProduct) {
+	private String consignorFilePath;
+
+	public CreateUkMailResources(ArrayList<Customer> customers, String runNo) {
 
 		this.input = customers;
 		this.prodConfig = ProductionConfiguration.getInstance();
@@ -66,12 +67,13 @@ public class CreateUkMailResources {
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
-		this.actualProduct = actualProduct;
-		this.ukMailManifestArchivePath = postConfig.getUkmManifestArchive();
 		this.runDate = new SimpleDateFormat("ddMMyy").format(new Date());
 		this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
 		this.runNo = runNo;
 		String jid = customers.get(0).getTenDigitJid().toString();
+		// File Paths
+		this.consignorFileArchivePath = postConfig.getUkmConsignorFileArchive();
+		this.consignorFilePath = postConfig.getUkmConsignorFileDestination();
 		this.soapFilePath = postConfig.getUkmSoapDestination() + jid + ".SOAPFILE.DAT";
 		this.soapFileArchivePath = postConfig.getUkmSoapArchive() + jid + ".SOAPFILE.DAT";
 		//Lookup the next item reference and date for each account number format of these files is:
@@ -111,8 +113,16 @@ public class CreateUkMailResources {
 		}
 
 		//Check to see if this application requires UKMAIL resources
-		processUkMail = !actualProduct.equals(Product.UNSORTED);
-		processMailmark = actualProduct.equals(Product.MM);
+		
+		processUkMail = customers.stream().anyMatch(c -> c.getProduct().equals(Product.MM) || c.getProduct().equals(Product.OCR));
+		processMailmark = customers.stream().anyMatch(c -> c.getProduct().equals(Product.MM));
+		if (processMailmark) {
+			actualProduct = Product.MM;
+		} else if (processUkMail) {
+			actualProduct = Product.OCR;
+		} else {
+			actualProduct = Product.UNSORTED;
+		}
 	}
 
 	public void method() {
@@ -166,6 +176,8 @@ public class CreateUkMailResources {
 		ArrayList<SoapFileEntry> sf = new ArrayList<SoapFileEntry>();
 		int index = -1;
 		boolean first = true;
+		String itemID = String.valueOf(nextItemId);
+		
 		for (Customer customer : customers) {
 			if (customer.isSot() || first) {
 				index++;
@@ -177,15 +189,16 @@ public class CreateUkMailResources {
 
 				SoapFileEntry soapFileEntry = new SoapFileEntry(runNo, customer.getTenDigitJid().toString(),
 						customer.getSequenceInChild(), postConfig.getMmAppname(), batchRef, postConfig.getMmScid(),
-						postConfig.getMmClass(), customer.getDps(), getItemId(), postConfig.getMmXmlFormat(),
+						postConfig.getMmClass(), customer.getDps(), itemID, postConfig.getMmXmlFormat(),
 						postConfig.getMmMachineable(), postConfig.getMmMailType(), getNumberOfAddressLines(customer),
 						formatPostCode(customer), postConfig.getMmXmlProduct(), customer.getWeight(),
 						ukmm.get(index).getAltRef());
 
 				sf.add(soapFileEntry);
+				itemID = getItemId();
 			}
 			//Setting MM barcode content
-			customer.setMmBarcodeContent(getMmBarcodeContent(getItemId(), customer));
+			customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
 		}
 
 		PrintWriter pw1 = fh.createOutputFileWriter(soapFilePath);
@@ -332,7 +345,7 @@ public class CreateUkMailResources {
 							prevCustIndex--;
 						}
 					} else {
-						endPID = previousCustomer.getSequenceInChild();
+						endPID = customer.getSequenceInChild();
 					}
 					UkMailManifest manifest = new UkMailManifest(customer.getTenDigitJid(), customer.getMsc(),
 							currentTrayItems, startPID, endPID, customer.getAppName(), getTrayId(), getProductCode(),
@@ -347,13 +360,11 @@ public class CreateUkMailResources {
 			previousCustomer = customer;
 		}
 
-		ukMailManifestPaths = new HashSet<String>();
 		for (UkMailManifest ukmm : manifestList) {
 
 			String output = ukmm.print(processMailmark);
-			fh.write(ukMailManifestArchivePath + ukmm.getManifestFilename(), output);
-			fh.write(ukMailManifestConsignorPath + ukmm.getManifestFilename(), output);
-			ukMailManifestPaths.add(ukMailManifestArchivePath + ukmm.getManifestFilename());
+			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
+			fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
 		}
 
 	}
