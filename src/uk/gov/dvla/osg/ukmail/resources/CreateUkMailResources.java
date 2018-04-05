@@ -195,10 +195,15 @@ public class CreateUkMailResources {
 						ukmm.get(index).getAltRef());
 
 				sf.add(soapFileEntry);
+				//Setting MM barcode content
+				customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
+				
+				// Increment ItemId
 				itemID = getItemId();
+			} else {
+				//Setting MM barcode content
+				customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
 			}
-			//Setting MM barcode content
-			customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
 		}
 
 		PrintWriter pw1 = fh.createOutputFileWriter(soapFilePath);
@@ -208,28 +213,29 @@ public class CreateUkMailResources {
 			fh.appendToFile(pw1, sfee.print());
 			fh.appendToFile(pw2, sfee.print());
 		}
+		
 		fh.closeFile(pw1);
 		fh.closeFile(pw2);
-
 	}
-	private void setMMCustomerContent(Customer cus) {
+	
+	private void setMMCustomerContent(Customer customer) {
 		String customerContent = "";
-		if (StringUtils.isBlank(cus.getMmCustomerContent())) {
+		if (StringUtils.isBlank(customer.getMmCustomerContent())) {
 			try {
 				DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
 				DateFormat toFormat = new SimpleDateFormat("ddMMyy");
 				//System.out.println(toFormat.format(fromFormat.parse(cus.getRunDate())));
-				String date = toFormat.format(fromFormat.parse(cus.getRunDate()));
-				customerContent = date + cus.getAppName(); //310318V11
-				cus.setMmCustomerContent(customerContent);
+				String date = toFormat.format(fromFormat.parse(customer.getRunDate()));
+				customerContent = date + customer.getAppName(); //310318V11
+				customer.setMmCustomerContent(customerContent);
 			} catch (ParseException ex) {
 				LOGGER.fatal("Unable to read runDate");
 			}			
 		}
 		
-		customerContent = cus.getMmCustomerContent();		
+		customerContent = customer.getMmCustomerContent();		
 		String str = String.format("%045d%-25.25s", new Integer(0), customerContent);	
-		cus.setMmBarcodeContent(str);
+		customer.setMmBarcodeContent(str);
 		// EXAMPLE
 		// |00000000000000000000000000000000000000000000000|200318HRC                |
 		
