@@ -70,12 +70,14 @@ public class CreateUkMailResources {
 		this.runDate = new SimpleDateFormat("ddMMyy").format(new Date());
 		this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
 		this.runNo = runNo;
-		String jid = customers.get(0).getTenDigitJid().toString();
+		// MP- 06/04, Incorrect jobId in the soap file name
+		String jid = customers.get(0).getTenDigitJid().toString().substring(0, 7) + "000";
+		
 		// File Paths
 		this.consignorFileArchivePath = postConfig.getUkmConsignorFileArchive();
 		this.consignorFilePath = postConfig.getUkmConsignorFileDestination();
-		this.soapFilePath = postConfig.getUkmSoapDestination() + jid + ".SOAPFILE.DAT";
-		this.soapFileArchivePath = postConfig.getUkmSoapArchive() + jid + ".SOAPFILE.DAT";
+		this.soapFilePath = postConfig.getUkmSoapDestination() + jid + ".SOAPFILE.DATA";
+		this.soapFileArchivePath = postConfig.getUkmSoapArchive() + jid + ".SOAPFILE.DATA";
 		//Lookup the next item reference and date for each account number format of these files is:
 		//DDMMYY:NEXT_REF_NUMBER (190815:154)
 		try {
@@ -104,6 +106,8 @@ public class CreateUkMailResources {
 		String resourceFileName = resourcePath + itemIdLookup;
 		try {
 			nextItemId = Integer.parseInt(fh.getNextBagRef(resourceFileName));
+			// Temp fix, MP - 06/04. Due to parallel running of old and new jars
+			nextItemId++;
 		} catch (NumberFormatException | IOException ex) {
 			LOGGER.fatal("Unable to read next item ID from {}", resourceFileName, ex);
 		}
