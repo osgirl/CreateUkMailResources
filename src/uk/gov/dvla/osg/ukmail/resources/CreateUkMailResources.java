@@ -382,7 +382,7 @@ public class CreateUkMailResources {
 	private String getManifestFilename(Customer customer) {
 		String productionArea = postConfig.getUkmConsignorDestinationDepartment();
 		String mailingSite = prodConfig.getMailingSite().toUpperCase();
-		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getSelectorRef(), 
+		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getAppName(), 
 										runNo, manifestTimestamp).concat(".DAT");
 	}
 
