@@ -8,11 +8,10 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-//import java.util.HashMap;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,7 +47,6 @@ public class CreateUkMailResources {
 	private InputFileHandler fh = new InputFileHandler();
 	private ArrayList<UkMailManifest> manifestList = new ArrayList<UkMailManifest>();
 	private ArrayList<Customer> ukMailCustomers;
-	private HashSet<String> ukMailManifestPaths;
 	private ArrayList<Customer> input;
 
 	private boolean processMailmark = false;
@@ -118,7 +116,7 @@ public class CreateUkMailResources {
 
 		//Check to see if this application requires UKMAIL resources
 		
-		for(Customer a : customers) {
+/*		for(Customer a : customers) {
 			if(a.getProduct() != null) {	
 				if(a.getProduct().equals(Product.MM) || a.getProduct().equals(Product.OCR)) {
 					processUkMail = true;
@@ -128,7 +126,7 @@ public class CreateUkMailResources {
 					processMailmark = true;	
 				}
 			}
-		}
+		}*/
 		
 /*		if (processMailmark) {
 			actualProduct = Product.MM;
@@ -138,8 +136,9 @@ public class CreateUkMailResources {
 			actualProduct = Product.UNSORTED;
 		}*/
 		
-		//processUkMail = customers.stream().anyMatch(c -> c.getProduct() != null && c.getProduct().equals(Product.MM) || c.getProduct().equals(Product.OCR));
-		//processMailmark = customers.stream().anyMatch(c -> c.getProduct() != null && c.getProduct().equals(Product.MM));
+		processUkMail = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()) || Product.OCR.equals(c.getProduct()));
+		processMailmark = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()));
+		
 		if (processMailmark) {
 			actualProduct = Product.MM;
 		} else if (processUkMail) {
@@ -156,7 +155,7 @@ public class CreateUkMailResources {
 		}
 		
 		try {
-			if (processMailmark || processUkMail) {
+			if (processUkMail) {
 				//Create a sub-set of customers that are to be sent via UKMAIL
 				ukMailCustomers = getUkMailCustomers(input);
 				//Cleanup from any previously run attempts
@@ -176,18 +175,12 @@ public class CreateUkMailResources {
 			} else {
 				LOGGER.info("No UKMAIL customers to process");
 			}
-
-		} catch (Exception e1) {
-			LOGGER.fatal("ERROR:'{}'", e1.getMessage());
-			e1.printStackTrace();
+		} catch (Exception ex) {
+			// PB 12/04 - put stack trace in Logger
+			LOGGER.fatal(ExceptionUtils.getStackTrace(ex));
 			System.exit(3);
 		}
 
-		if (ukMailManifestPaths != null) {
-			for (String s : ukMailManifestPaths) {
-				LOGGER.info("MANIFEST, '{}' exists {}", s, fh.checkFileExists(s));
-			}
-		}
 		LOGGER.info("UkMailResources finished");
 	}
 
@@ -248,7 +241,6 @@ public class CreateUkMailResources {
 			try {
 				DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
 				DateFormat toFormat = new SimpleDateFormat("ddMMyy");
-				//System.out.println(toFormat.format(fromFormat.parse(cus.getRunDate())));
 				String date = toFormat.format(fromFormat.parse(customer.getRunDate()));
 				customerContent = date + customer.getAppName(); //310318V11
 				customer.setMmCustomerContent(customerContent);
