@@ -118,8 +118,28 @@ public class CreateUkMailResources {
 
 		//Check to see if this application requires UKMAIL resources
 		
-		processUkMail = customers.stream().anyMatch(c -> c.getProduct().equals(Product.MM) || c.getProduct().equals(Product.OCR));
-		processMailmark = customers.stream().anyMatch(c -> c.getProduct().equals(Product.MM));
+		for(Customer a : customers) {
+			if(a.getProduct() != null) {	
+				if(a.getProduct().equals(Product.MM) || a.getProduct().equals(Product.OCR)) {
+					processUkMail = true;
+				} 
+				
+				if(a.getProduct().equals(Product.MM)) {
+					processMailmark = true;	
+				}
+			}
+		}
+		
+/*		if (processMailmark) {
+			actualProduct = Product.MM;
+		} else if (processUkMail) {
+			actualProduct = Product.OCR;
+		} else {
+			actualProduct = Product.UNSORTED;
+		}*/
+		
+		//processUkMail = customers.stream().anyMatch(c -> c.getProduct() != null && c.getProduct().equals(Product.MM) || c.getProduct().equals(Product.OCR));
+		//processMailmark = customers.stream().anyMatch(c -> c.getProduct() != null && c.getProduct().equals(Product.MM));
 		if (processMailmark) {
 			actualProduct = Product.MM;
 		} else if (processUkMail) {
@@ -332,7 +352,7 @@ public class CreateUkMailResources {
 					// Calculate manifest values for for the pevious tray
 					UkMailManifest manifest = new UkMailManifest(previousCustomer.getTenDigitJid(),
 							previousCustomer.getMsc(), currentTrayItems, startPID, endPID,
-							previousCustomer.getAppName(), getTrayId(), getProductCode(),
+							previousCustomer.getMailingId(), getTrayId(), getProductCode(),
 							getManifestFilename(previousCustomer), currentTrayWeight, getAccountNo(), runNo, runDate,
 							getFormat());
 					manifestList.add(manifest);
@@ -358,7 +378,7 @@ public class CreateUkMailResources {
 						endPID = customer.getSequenceInChild();
 					}
 					UkMailManifest manifest = new UkMailManifest(customer.getTenDigitJid(), customer.getMsc(),
-							currentTrayItems, startPID, endPID, customer.getAppName(), getTrayId(), getProductCode(),
+							currentTrayItems, startPID, endPID, customer.getMailingId(), getTrayId(), getProductCode(),
 							getManifestFilename(customer), currentTrayWeight, getAccountNo(), runNo, runDate,
 							getFormat());
 
@@ -382,7 +402,7 @@ public class CreateUkMailResources {
 	private String getManifestFilename(Customer customer) {
 		String productionArea = postConfig.getUkmConsignorDestinationDepartment();
 		String mailingSite = prodConfig.getMailingSite().toUpperCase();
-		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getAppName(), 
+		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getMailingId(), 
 										runNo, manifestTimestamp).concat(".DAT");
 	}
 
