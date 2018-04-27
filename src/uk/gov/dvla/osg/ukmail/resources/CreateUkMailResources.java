@@ -115,27 +115,6 @@ public class CreateUkMailResources {
 		}
 
 		//Check to see if this application requires UKMAIL resources
-		
-/*		for(Customer a : customers) {
-			if(a.getProduct() != null) {	
-				if(a.getProduct().equals(Product.MM) || a.getProduct().equals(Product.OCR)) {
-					processUkMail = true;
-				} 
-				
-				if(a.getProduct().equals(Product.MM)) {
-					processMailmark = true;	
-				}
-			}
-		}*/
-		
-/*		if (processMailmark) {
-			actualProduct = Product.MM;
-		} else if (processUkMail) {
-			actualProduct = Product.OCR;
-		} else {
-			actualProduct = Product.UNSORTED;
-		}*/
-		
 		processUkMail = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()) || Product.OCR.equals(c.getProduct()));
 		processMailmark = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()));
 		
@@ -378,7 +357,10 @@ public class CreateUkMailResources {
 				}
 			}
 			currentTrayWeight += customer.getWeight();
-			currentTrayItems++;
+			// Increases for each EOG only - PB 27/04
+			if (customer.isEog()) {
+				currentTrayItems++;
+			}
 			previousCustomer = customer;
 		}
 
@@ -388,7 +370,6 @@ public class CreateUkMailResources {
 			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
 			fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
 		}
-
 	}
 
 	private String getManifestFilename(Customer customer) {
