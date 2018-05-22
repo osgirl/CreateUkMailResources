@@ -19,13 +19,12 @@ import uk.gov.dvla.osg.common.classes.BatchType;
 import uk.gov.dvla.osg.common.classes.Customer;
 import uk.gov.dvla.osg.common.classes.Product;
 import uk.gov.dvla.osg.common.config.PostageConfiguration;
-import uk.gov.dvla.osg.common.config.ProductionConfiguration;
 
 public class CreateUkMailResources {
 	private static final Logger LOGGER = LogManager.getLogger();
 
-	private String mAccNo = "";
-	private String fAccNo = "";
+	//private String mAccNo = "";
+	//private String fAccNo = "";
 	private String mTrayLookup = "";
 	private String fTrayLookup = "";
 	private String itemIdLookup = "";
@@ -39,11 +38,11 @@ public class CreateUkMailResources {
 	private String manifestTimestamp;
 	private Product actualProduct;
 	private String resourcePath;
-	private Integer morristonNextItemRef;
-	private Integer fforestfachNextItemRef;
+	//private Integer morristonNextItemRef;
+	//private Integer fforestfachNextItemRef;
 	private Integer nextItemId;
 	private PostageConfiguration postConfig;
-	private ProductionConfiguration prodConfig;
+	//private ProductionConfiguration prodConfig;
 	private InputFileHandler fh = new InputFileHandler();
 	private ArrayList<UkMailManifest> manifestList = new ArrayList<UkMailManifest>();
 	private ArrayList<Customer> ukMailCustomers;
@@ -57,11 +56,10 @@ public class CreateUkMailResources {
 	public CreateUkMailResources(ArrayList<Customer> customers, String runNo) {
 
 		this.input = customers;
-		this.prodConfig = ProductionConfiguration.getInstance();
+		//this.prodConfig = ProductionConfiguration.getInstance();
 		this.postConfig = PostageConfiguration.getInstance();
 		this.resourcePath = postConfig.getUkmResourcePath();
-		this.mAccNo = postConfig.getUkmMAcc();
-		this.fAccNo = postConfig.getUkmFAcc();
+
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
@@ -84,18 +82,16 @@ public class CreateUkMailResources {
 			// Pull next date out of the array
 			morristonNextItemDate = morristonNextItemDetails[0];
 			fforestfachNextItemDate = fforestfachNextItemDetails[0];
-
+			// Pull reference number out of the array
+			UkMailManifest.morristonNextItemRef = Integer.parseInt(morristonNextItemDetails[1]);
+			UkMailManifest.fforestfachNextItemRef = Integer.parseInt(fforestfachNextItemDetails[1]);
 			//If the date at runtime is different to the lookup date then reset the item reference
 			if (!morristonNextItemDate.equals(runDate.toString())) {
-				morristonNextItemRef = 1;
+				UkMailManifest.morristonNextItemRef = 1;
 			}
 			if (!fforestfachNextItemDate.equals(runDate.toString())) {
-				fforestfachNextItemRef = 1;
+			    UkMailManifest.fforestfachNextItemRef = 1;
 			}
-
-			// Pull reference number out of the array
-			morristonNextItemRef = Integer.parseInt(morristonNextItemDetails[1]);
-			fforestfachNextItemRef = Integer.parseInt(fforestfachNextItemDetails[1]);
 		} catch (NumberFormatException | IOException ex) {
 			LOGGER.fatal("Unable to read item details from Tray Lookup files", ex);
 		}
@@ -115,7 +111,8 @@ public class CreateUkMailResources {
 		}
 
 		//Check to see if this application requires UKMAIL resources
-		processUkMail = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()) || Product.OCR.equals(c.getProduct()));
+		processUkMail = customers.stream().anyMatch(this::isUkMailCustomer);
+		
 		processMailmark = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()));
 		
 		if (processMailmark) {
@@ -123,7 +120,7 @@ public class CreateUkMailResources {
 		} else if (processUkMail) {
 			actualProduct = Product.OCR;
 		} else {
-			actualProduct = Product.UNSORTED;
+			actualProduct = Product.UNCODED;
 		}
 	}
 
@@ -148,8 +145,8 @@ public class CreateUkMailResources {
 					//Update item numbers
 					fh.writeReplace(resourcePath + itemIdLookup, Integer.toString(nextItemId++));
 					//Could be a different path for a different account number
-					fh.writeReplace(mTrayLookup, runDate.toString() + ":" + morristonNextItemRef);
-					fh.writeReplace(fTrayLookup, runDate.toString() + ":" + fforestfachNextItemRef);
+					fh.writeReplace(mTrayLookup, runDate.toString() + ":" + UkMailManifest.morristonNextItemRef);
+					fh.writeReplace(fTrayLookup, runDate.toString() + ":" + UkMailManifest.fforestfachNextItemRef);
 				}
 			} else {
 				LOGGER.info("No UKMAIL customers to process");
@@ -321,11 +318,8 @@ public class CreateUkMailResources {
 						endPID = previousCustomer.getSequenceInChild();
 					}
 					// Calculate manifest values for for the pevious tray
-					UkMailManifest manifest = new UkMailManifest(previousCustomer.getTenDigitJid(),
-							previousCustomer.getMsc(), currentTrayItems, startPID, endPID,
-							previousCustomer.getMailingId(), getTrayId(), getProductCode(),
-							getManifestFilename(previousCustomer), currentTrayWeight, getAccountNo(), runNo, runDate,
-							getFormat());
+					UkMailManifest manifest = new UkMailManifest(previousCustomer, currentTrayItems, startPID, endPID,
+							currentTrayWeight, runNo, runDate, actualProduct);
 					manifestList.add(manifest);
 					startPID = customer.getSequenceInChild();
 					currentTrayItems = 0;
@@ -348,10 +342,8 @@ public class CreateUkMailResources {
 					} else {
 						endPID = customer.getSequenceInChild();
 					}
-					UkMailManifest manifest = new UkMailManifest(customer.getTenDigitJid(), customer.getMsc(),
-							currentTrayItems, startPID, endPID, customer.getMailingId(), getTrayId(), getProductCode(),
-							getManifestFilename(customer), currentTrayWeight, getAccountNo(), runNo, runDate,
-							getFormat());
+					UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems, startPID, endPID,
+							currentTrayWeight, runNo, runDate, actualProduct);
 
 					manifestList.add(manifest);
 				}
@@ -366,43 +358,10 @@ public class CreateUkMailResources {
 
 		for (UkMailManifest ukmm : manifestList) {
 
-			String output = ukmm.print(processMailmark);
+			String output = ukmm.print();
 			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
 			fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
 		}
-	}
-
-	private String getManifestFilename(Customer customer) {
-		String productionArea = postConfig.getUkmConsignorDestinationDepartment();
-		String mailingSite = prodConfig.getMailingSite().toUpperCase();
-		return StringUtils.joinWith(".", mailingSite, productionArea, customer.getMailingId(), 
-										runNo, manifestTimestamp).concat(".DAT");
-	}
-
-	private String getProductCode() {
-		return actualProduct.equals(Product.MM) ? postConfig.getMmProduct() : postConfig.getOcrProduct();
-	}
-
-	private String getFormat() {
-		return actualProduct.equals(Product.MM) ? postConfig.getMmFormat() : postConfig.getOcrFormat();
-	}
-
-	private Integer getTrayId() {
-		String accountNo = getAccountNo();
-		Integer itemId;
-
-		if (accountNo.equals(mAccNo)) {
-			itemId = morristonNextItemRef;
-			morristonNextItemRef++;
-		} else {
-			itemId = fforestfachNextItemRef;
-			fforestfachNextItemRef++;
-		}
-		return itemId;
-	}
-
-	private String getAccountNo() {
-		return "M".equalsIgnoreCase(prodConfig.getMailingSite()) ? mAccNo : fAccNo;
 	}
 
 	public ArrayList<Customer> getUkMailCustomers(ArrayList<Customer> allCustomers) {
@@ -412,7 +371,9 @@ public class CreateUkMailResources {
 	}
 
 	private boolean isUkMailCustomer(Customer customer) {
-		return Product.MM.equals(customer.getProduct()) || Product.OCR.equals(customer.getProduct());
+		return Product.MM.equals(customer.getProduct()) 
+		        || Product.OCR.equals(customer.getProduct())
+		        || Product.UNSORTED.equals(customer.getProduct());
 	}
 
 }
