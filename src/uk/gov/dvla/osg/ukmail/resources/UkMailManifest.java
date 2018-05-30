@@ -5,6 +5,7 @@ import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
 
+import uk.gov.dvla.osg.common.classes.BatchType;
 import uk.gov.dvla.osg.common.classes.Customer;
 import uk.gov.dvla.osg.common.classes.Product;
 import uk.gov.dvla.osg.common.config.PostageConfiguration;
@@ -29,14 +30,15 @@ public class UkMailManifest {
 	private String altRef;
 	private String collectionDate = "";
 	private String batchId;
-	//private String rpdJid;
 	private int tenDigitJid;
 	private String manifestFilename;
     private ProductionConfiguration prodConfig;
     private PostageConfiguration postConfig;
     private Product actualProduct;
+    private BatchType batchType;
     public static int morristonNextItemRef;
     public static int fforestfachNextItemRef;
+    private final String UNSORTEDPREFIX = "U";
 
 	public UkMailManifest(Customer customer, Integer trayVol, Integer startPID, Integer endPID,
 			Double weight, String runNo, String runDate, Product actualProduct) {
@@ -50,21 +52,33 @@ public class UkMailManifest {
 	    this.trayWeight = weight.intValue();
 	    this.runNo = runNo;
 	    this.runDate = runDate;
-	    this.actualProduct = actualProduct;
+	    
+	    
+  
+	    this.tenDigitJid = customer.getTenDigitJid();
+	    this.msc = customer.getMsc();
+	    
+	    this.batchType = customer.getBatchType();
+       
+	    if (BatchType.UNSORTED.equals(batchType)) {
+            this.actualProduct = Product.UNSORTED;
+            this.appName = UNSORTEDPREFIX + customer.getMailingId();
+        } else {
+            this.actualProduct = actualProduct;
+            this.appName = customer.getMailingId();
+        }
 	    
 	    this.itemId = getTrayId();
 	    this.serviceCode = getServiceCode();
 	    this.accountNo = getAccountNo();
-	    this.format = getFormat();	    
-	    this.tenDigitJid = customer.getTenDigitJid();
-	    this.msc = customer.getMsc();
-	    this.appName = customer.getMailingId();
-	    
+	    this.format = getFormat();    
 	    this.manifestFilename = setManifestFilename();	    
 	    this.mailingId = setMailingId();
 		this.altRef = setAltRef();
 		this.customerRef = setCustomerRef();
 		this.batchId = setBatchId();
+
+		
 	}
 	
 	public String print() {
@@ -74,7 +88,7 @@ public class UkMailManifest {
 	}
 
 	private String setMailingId() {
-		return this.appName + "-"+this.runNo;
+		return this.appName + "-" + this.runNo;
 	}
 
 	private String setAltRef() {
@@ -112,18 +126,17 @@ public class UkMailManifest {
     }
 
     private String getAccountNo() {
-        if (actualProduct.equals(Product.UNSORTED))
+        if (BatchType.UNSORTED.equals(batchType))
             return postConfig.getUnsortedAccountNo();
+        
         return "M".equalsIgnoreCase(prodConfig.getMailingSite()) ? postConfig.getUkmMAcc() : postConfig.getUkmFAcc();
     }
     
     private String getServiceCode() {
-        if (actualProduct.equals(Product.MM))
-            return postConfig.getMmProduct();
-        else if (actualProduct.equals(Product.OCR))
-            return postConfig.getOcrProduct();
-        else
+        if (BatchType.UNSORTED.equals(batchType))
             return postConfig.getUnsortedProduct();
+        
+        return actualProduct.equals(Product.MM) ? postConfig.getMmProduct() : postConfig.getOcrProduct();
     }
     
     private String setManifestFilename() {
@@ -134,12 +147,10 @@ public class UkMailManifest {
     }
     
     private String getFormat() {
-        if (actualProduct.equals(Product.MM))
-            return postConfig.getMmFormat();
-        else if (actualProduct.equals(Product.OCR))
-            return postConfig.getOcrFormat();
-        else
+        if (BatchType.UNSORTED.equals(batchType))
             return postConfig.getUnsortedFormat();
+        
+        return Product.MM.equals(actualProduct) ? postConfig.getMmFormat() : postConfig.getOcrFormat();
     }
 
     public String getMailingId() {
