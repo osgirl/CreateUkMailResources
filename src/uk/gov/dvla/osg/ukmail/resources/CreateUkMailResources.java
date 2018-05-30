@@ -356,11 +356,13 @@ public class CreateUkMailResources {
 			previousCustomer = customer;
 		}
 
+		LOGGER.trace("Consignor Filepath: {}", consignorFilePath + manifestList.get(0).getManifestFilename());
+		LOGGER.trace("Consignor Arcive Filepath: {}", consignorFileArchivePath + manifestList.get(0).getManifestFilename());
+		
 		for (UkMailManifest ukmm : manifestList) {
-
 			String output = ukmm.print();
-			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
 			fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
+			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
 		}
 	}
 
