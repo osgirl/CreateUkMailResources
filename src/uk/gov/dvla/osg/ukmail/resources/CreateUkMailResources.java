@@ -8,6 +8,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -23,8 +24,6 @@ import uk.gov.dvla.osg.common.config.PostageConfiguration;
 public class CreateUkMailResources {
 	private static final Logger LOGGER = LogManager.getLogger();
 
-	//private String mAccNo = "";
-	//private String fAccNo = "";
 	private String mTrayLookup = "";
 	private String fTrayLookup = "";
 	private String itemIdLookup = "";
@@ -38,28 +37,27 @@ public class CreateUkMailResources {
 	private String manifestTimestamp;
 	private Product actualProduct;
 	private String resourcePath;
-	//private Integer morristonNextItemRef;
-	//private Integer fforestfachNextItemRef;
 	private Integer nextItemId;
 	private PostageConfiguration postConfig;
-	//private ProductionConfiguration prodConfig;
 	private InputFileHandler fh = new InputFileHandler();
 	private ArrayList<UkMailManifest> manifestList = new ArrayList<UkMailManifest>();
 	private ArrayList<Customer> ukMailCustomers;
 	private ArrayList<Customer> input;
+	private List<BatchType> ukmBatchTypes;
 
 	private boolean processMailmark = false;
 	private boolean processUkMail = false;
 
 	private String consignorFilePath;
 
+
 	public CreateUkMailResources(ArrayList<Customer> customers, String runNo) {
 
 		this.input = customers;
 		//this.prodConfig = ProductionConfiguration.getInstance();
 		this.postConfig = PostageConfiguration.getInstance();
+		this.ukmBatchTypes = postConfig.getUkmBatchTypes();
 		this.resourcePath = postConfig.getUkmResourcePath();
-
 		this.mTrayLookup = resourcePath + postConfig.getUkmMTrayLookupFile();
 		this.fTrayLookup = resourcePath + postConfig.getUkmFTrayLookupFile();
 		this.itemIdLookup = postConfig.getUkmItemIdLookupFile();
@@ -165,21 +163,21 @@ public class CreateUkMailResources {
 		fh.deleteFile(soapFileArchivePath);
 	}
 
-	private void createSOAPfile(ArrayList<UkMailManifest> ukmm, ArrayList<Customer> customers) {
+	private void createSOAPfile(ArrayList<UkMailManifest> ukmm, ArrayList<Customer> mmCustomers) {
 		ArrayList<SoapFileEntry> sf = new ArrayList<SoapFileEntry>();
 		int index = -1;
 		boolean first = true;
 		String itemID = String.valueOf(nextItemId);
 		
-		for (Customer customer : customers) {
+		for (Customer customer : mmCustomers) {
 			if (customer.isSot() || first) {
 				index++;
 				first = false;
 			}
-			if (customer.isEog()) {
+			if (customer.isEog() && Product.MM.equals(customer.getProduct())) {
 				String batchRef = ukmm.get(index).getMailingId() + "_"
 						+ customer.getTenDigitJid().toString().substring(0, 7) + "000_" + manifestTimestamp;
-
+				
 				SoapFileEntry soapFileEntry = new SoapFileEntry(runNo, customer.getTenDigitJid().toString(),
 						customer.getSequenceInChild(), postConfig.getMmAppname(), batchRef, postConfig.getMmScid(),
 						postConfig.getMmClass(), customer.getDps(), itemID, postConfig.getMmXmlFormat(),
@@ -193,7 +191,7 @@ public class CreateUkMailResources {
 				
 				// Increment ItemId
 				itemID = getItemId();
-			} else {
+			} else if (Product.MM.equals(customer.getProduct())) {
 				//Setting MM barcode content
 				customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
 			}
@@ -373,9 +371,7 @@ public class CreateUkMailResources {
 	}
 
 	private boolean isUkMailCustomer(Customer customer) {
-		return Product.MM.equals(customer.getProduct()) 
-		        || Product.OCR.equals(customer.getProduct())
-		        || Product.UNSORTED.equals(customer.getProduct());
+	        return ukmBatchTypes.contains(customer.getBatchType());
 	}
-
+	
 }
