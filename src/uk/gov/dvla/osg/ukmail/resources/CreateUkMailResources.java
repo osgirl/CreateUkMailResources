@@ -6,9 +6,7 @@ import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -194,7 +192,8 @@ public class CreateUkMailResources {
 				customer.setMmBarcodeContent(getMmBarcodeContent(itemID, customer));
 			}
 		}
-
+		LOGGER.debug("SOAP File Path: {}", soapFilePath);
+		
 		PrintWriter pw1 = fh.createOutputFileWriter(soapFilePath);
 		PrintWriter pw2 = fh.createOutputFileWriter(soapFileArchivePath);
 
@@ -352,10 +351,16 @@ public class CreateUkMailResources {
 			previousCustomer = customer;
 		}
 		
+		Set<String> filePaths = new HashSet<>();
+		
 		for (UkMailManifest ukmm : manifestList) {
+		    filePaths.add(consignorFilePath + ukmm.getManifestFilename());
 			String output = ukmm.print();
 			fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
 			fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
+		}
+		for (String path : filePaths) {
+	          LOGGER.debug("Manifest File Path: {}", path);
 		}
 	}
 
