@@ -18,6 +18,7 @@ import uk.gov.dvla.osg.common.classes.BatchType;
 import uk.gov.dvla.osg.common.classes.Customer;
 import uk.gov.dvla.osg.common.classes.Product;
 import uk.gov.dvla.osg.common.config.PostageConfiguration;
+import uk.gov.dvla.osg.ukmail.resources.SoapFileEntry.SoapFileEntryBuilder;
 
 public class CreateUkMailResources {
 	private static final Logger LOGGER = LogManager.getLogger();
@@ -172,12 +173,25 @@ public class CreateUkMailResources {
 				String batchRef = ukmm.get(index).getMailingId() + "_"
 						+ customer.getTenDigitJid().toString().substring(0, 7) + "000_" + manifestTimestamp;
 				
-				SoapFileEntry soapFileEntry = new SoapFileEntry(runNo, customer.getTenDigitJid().toString(),
-						customer.getSequenceInChild(), postConfig.getMmAppname(), batchRef, postConfig.getMmScid(),
-						postConfig.getMmClass(), customer.getDps(), itemID, postConfig.getMmXmlFormat(),
-						postConfig.getMmMachineable(), postConfig.getMmMailType(), getNumberOfAddressLines(customer),
-						formatPostCode(customer), postConfig.getMmXmlProduct(), customer.getWeight(),
-						ukmm.get(index).getAltRef());
+				SoapFileEntry soapFileEntry = SoapFileEntryBuilder.getInstance()
+				        .runNo(runNo)
+				        .jid(customer.getTenDigitJid().toString())
+				        .pid(customer.getSequenceInChild())
+				        .appName(postConfig.getMmAppname())
+				        .batchRef(batchRef)
+				        .scid(postConfig.getMmScid())
+				        .clasz(postConfig.getMmClass())
+				        .dps(customer.getDps())
+				        .itemId(itemID)
+				        .format(postConfig.getMmXmlFormat())
+				        .machineable(postConfig.getMmMachineable())
+				        .mailType(postConfig.getMmMailType())
+				        .noOfAddressLines(getNumberOfAddressLines(customer))
+				        .postcode(formatPostCode(customer))
+				        .product(postConfig.getMmXmlProduct())
+				        .weight(customer.getWeight())
+				        .spare8(ukmm.get(index).getAltRef())
+				        .build();
 
 				sf.add(soapFileEntry);
 				//Setting MM barcode content
