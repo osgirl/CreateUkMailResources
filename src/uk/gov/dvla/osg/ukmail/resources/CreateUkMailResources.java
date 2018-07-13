@@ -96,13 +96,9 @@ public class CreateUkMailResources {
 		try {
 			nextItemId = Integer.parseInt(fh.getNextBagRef(resourceFileName));
 			// Temp fix, MP - 06/04. Due to parallel running of old and new jars
-			nextItemId++;
+			//nextItemId++;
 		} catch (NumberFormatException | IOException ex) {
 			LOGGER.fatal("Unable to read next item ID from {}", resourceFileName, ex);
-		}
-
-		if (nextItemId == 100000000) {
-			nextItemId = 1;
 		}
 
 		//Check to see if this application requires UKMAIL resources
@@ -138,7 +134,7 @@ public class CreateUkMailResources {
 					//Also creates barcode lookup file
 					createSOAPfile(manifestList, ukMailCustomers);
 					//Update item numbers
-					fh.writeReplace(resourcePath + itemIdLookup, Integer.toString(nextItemId++));
+					fh.writeReplace(resourcePath + itemIdLookup, getItemId());
 					//Could be a different path for a different account number
 					fh.writeReplace(mTrayLookup, runDate.toString() + ":" + UkMailManifest.morristonNextItemRef);
 					fh.writeReplace(fTrayLookup, runDate.toString() + ":" + UkMailManifest.fforestfachNextItemRef);
@@ -163,13 +159,15 @@ public class CreateUkMailResources {
 		ArrayList<SoapFileEntry> sf = new ArrayList<SoapFileEntry>();
 		int index = -1;
 		boolean first = true;
-		String itemID = String.valueOf(nextItemId);
+		String itemID = getItemId();
 		
 		for (Customer customer : mmCustomers) {
+		    
 			if (customer.isSot() || first) {
 				index++;
 				first = false;
 			}
+			
 			if (customer.isEog() && Product.MM.equals(customer.getProduct())) {
 				String batchRef = ukmm.get(index).getMailingId() + "_"
 						+ customer.getTenDigitJid().toString().substring(0, 7) + "000_" + manifestTimestamp;
@@ -271,11 +269,12 @@ public class CreateUkMailResources {
 	}
 
 	private String getItemId() {
-		if (nextItemId == 100000000) {
+	    nextItemId++;
+
+	    if (nextItemId >= 100000000) {
 			nextItemId = 1;
-		} else {
-			nextItemId++;
 		}
+	    
 		return String.format("%08d", nextItemId);
 	}
 

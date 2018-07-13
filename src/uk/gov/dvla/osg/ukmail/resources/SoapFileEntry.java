@@ -39,7 +39,7 @@ public class SoapFileEntry {
 		this.noOfAddressLines = noOfAddressLines;
 		this.postcode = postcode;
 		this.product = product;
-		this.weight = (int) weight.doubleValue();
+		this.weight = weight.intValue();
 		this.spare8 = spare8;
 	}
 	
