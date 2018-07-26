@@ -305,6 +305,7 @@ public class CreateUkMailResources {
 		
 		for (Customer customer : ukMailCustomers) {
 			index++;
+			
 			if (firstCustomer) {
 				startPID = customer.getSequenceInChild();
 				firstCustomer = false;
@@ -335,6 +336,7 @@ public class CreateUkMailResources {
 				} else if (customer.getOriginalIdx() == lastCustomer) {
 					// We are on the last customer - set values for final (current) tray
 					currentTrayWeight += customer.getWeight();
+					currentTrayItems++;
 					// End piece ID needs to be calculated for multi doc
 					if (customer.isBatchType(BatchType.MULTI)) {
 						// we want to check values from the previous customer of the current tray
