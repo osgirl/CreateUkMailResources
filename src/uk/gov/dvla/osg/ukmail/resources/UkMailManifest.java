@@ -5,11 +5,11 @@ import java.util.Date;
 
 import org.apache.commons.lang3.StringUtils;
 
-import uk.gov.dvla.osg.common.classes.BatchType;
 import uk.gov.dvla.osg.common.classes.Customer;
-import uk.gov.dvla.osg.common.classes.Product;
 import uk.gov.dvla.osg.common.config.PostageConfiguration;
 import uk.gov.dvla.osg.common.config.ProductionConfiguration;
+import uk.gov.dvla.osg.common.enums.BatchType;
+import uk.gov.dvla.osg.common.enums.Product;
 
 public class UkMailManifest {
 	private String msc;
