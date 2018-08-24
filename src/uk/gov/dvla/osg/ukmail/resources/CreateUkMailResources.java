@@ -6,7 +6,9 @@ import java.io.PrintWriter;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -62,6 +64,7 @@ public class CreateUkMailResources {
         this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
         this.runNo = runNo;
         // Parent JobId is used for filenames
+        String jobNo = customers.get(0).getEightDigitJid().toString() +"."+customers.get(0).getSequenceInChild().toString();
         String parentJid = customers.get(0).getTenDigitJid().toString().substring(0, 7) + "000";
         // File Paths
         this.consignorFileArchivePath = postConfig.getUkmConsignorFileArchive();
@@ -104,7 +107,7 @@ public class CreateUkMailResources {
 
         // Check to see if this application requires UKMAIL resources
         processUkMail = customers.stream().anyMatch(this::isUkMailCustomer);
-
+        // Check to see if this application requires MAILMARK resources
         processMailmark = customers.stream().anyMatch(c -> Product.MM.equals(c.getProduct()));
 
         if (processMailmark) {
@@ -207,7 +210,7 @@ public class CreateUkMailResources {
                 DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
                 DateFormat toFormat = new SimpleDateFormat("ddMMyy");
                 String date = toFormat.format(fromFormat.parse(customer.getRunDate()));
-                customerContent = date + customer.getAppName(); // 310318V11
+                customerContent = date + customer.getAppName(); // E.G. 310318V11
                 customer.setMmCustomerContent(customerContent);
             } catch (ParseException ex) {
                 LOGGER.fatal("Unable to read runDate");
@@ -290,7 +293,6 @@ public class CreateUkMailResources {
             
             UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems, startPID, endPID, currentTrayWeight, 
                     runNo, runDate, actualProduct);
-
             manifestList.add(manifest);
 
         } else {
@@ -357,17 +359,19 @@ public class CreateUkMailResources {
                 previousCustomer = customer;
             }
         }
-        Set<String> filePaths = new HashSet<>();
 
         for (UkMailManifest ukmm : manifestList) {
-            filePaths.add(consignorFilePath + ukmm.getManifestFilename());
             String output = ukmm.print();
             fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
             fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
         }
-        for (String path : filePaths) {
-            LOGGER.debug("Manifest File Path: {}", path);
-        }
+        
+        // LOG both the normal and unsorted manifest filepaths
+        manifestList.stream()
+                    .map(m -> m.getManifestFilename())
+                    .distinct()
+                    .forEach(path -> LOGGER.debug("Manifest File Path: {}", consignorFilePath + path));
+        
     }
 
     public ArrayList<Customer> getUkMailCustomers(ArrayList<Customer> allCustomers) {
