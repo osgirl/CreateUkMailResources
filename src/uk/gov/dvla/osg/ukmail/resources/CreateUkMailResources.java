@@ -64,7 +64,6 @@ public class CreateUkMailResources {
         this.manifestTimestamp = new SimpleDateFormat("ddMMyyyy_HHmmss").format(new Date());
         this.runNo = runNo;
         // Parent JobId is used for filenames
-        String jobNo = customers.get(0).getEightDigitJid().toString() +"."+customers.get(0).getSequenceInChild().toString();
         String parentJid = customers.get(0).getTenDigitJid().toString().substring(0, 7) + "000";
         // File Paths
         this.consignorFileArchivePath = postConfig.getUkmConsignorFileArchive();
@@ -191,7 +190,9 @@ public class CreateUkMailResources {
         }
         LOGGER.debug("SOAP File Path: {}", soapFilePath);
 
+        @SuppressWarnings("resource")
         PrintWriter pw1 = fh.createOutputFileWriter(soapFilePath);
+        @SuppressWarnings("resource")
         PrintWriter pw2 = fh.createOutputFileWriter(soapFileArchivePath);
 
         for (SoapFileEntry sfee : sf) {
@@ -274,6 +275,7 @@ public class CreateUkMailResources {
         return String.format("%08d", nextItemId);
     }
 
+    @SuppressWarnings("null")
     private void createUkMailManifest(ArrayList<Customer> ukMailCustomer) {
         int startPID = 1;
         int endPID = 1;
@@ -281,97 +283,93 @@ public class CreateUkMailResources {
         double currentTrayWeight = 0;
         boolean firstCustomer = true;
         Customer previousCustomer = null;
-
         int lastCustomer = ukMailCustomers.isEmpty() ? 0 : ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
+
         int index = 0;
 
-        if (ukMailCustomer.size() == 1) {
-            Customer customer = ukMailCustomer.get(0);
-            currentTrayWeight = customer.getWeight();
-            currentTrayItems = 1;
-            endPID = 1;
-            
-            UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems, startPID, endPID, currentTrayWeight, 
-                    runNo, runDate, actualProduct);
-            manifestList.add(manifest);
+        /* if (ukMailCustomer.size() == 1) { Customer customer = ukMailCustomer.get(0);
+         * currentTrayWeight = customer.getWeight(); currentTrayItems = 1; endPID = 1;
+         * 
+         * UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems,
+         * startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
+         * manifestList.add(manifest);
+         * 
+         * } else { */
 
-        } else {
+        for (Customer customer : ukMailCustomers) {
+            index++;
 
-            for (Customer customer : ukMailCustomers) {
-                index++;
-
-                if (firstCustomer) {
-                    startPID = customer.getSequenceInChild();
-                    firstCustomer = false;
-                } else {
-                    if (customer.isSot()) {
-                        // End piece ID needs to be calculated for multi doc
-                        if (previousCustomer.isBatchType(BatchType.MULTI)) {
-                            // we are on the SOT & want to check the penultimate customer of the previous
-                            // tray
-                            int prevCustIndex = index - 2;
-                            boolean found = false;
-                            while (prevCustIndex > 0 && !found) {
-                                if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
-                                    endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
-                                    found = true;
-                                }
-                                prevCustIndex--;
-                            }
-                        } else {
-                            endPID = previousCustomer.getSequenceInChild();
+            if (firstCustomer) {
+                startPID = customer.getSequenceInChild();
+                firstCustomer = false;
+            } else if (customer.isSot()) {
+                // End piece ID needs to be calculated for multi doc
+                if (previousCustomer.isBatchType(BatchType.MULTI)) {
+                    // we are on the SOT & want to check the penultimate customer of the previous
+                    // tray
+                    int prevCustIndex = index - 2;
+                    boolean found = false;
+                    while (prevCustIndex > 0 && !found) {
+                        if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
+                            endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
+                            found = true;
                         }
-                        // Calculate manifest values for for the pevious tray
-                        UkMailManifest manifest = new UkMailManifest(previousCustomer, currentTrayItems, startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
-                        manifestList.add(manifest);
-                        startPID = customer.getSequenceInChild();
-                        currentTrayItems = 0;
-                        currentTrayWeight = 0;
-                    } else if (customer.getOriginalIdx() == lastCustomer) {
-                        // We are on the last customer - set values for final (current) tray
-                        currentTrayWeight += customer.getWeight();
-                        currentTrayItems++;
-                        // End piece ID needs to be calculated for multi doc
-                        if (customer.isBatchType(BatchType.MULTI)) {
-                            // we want to check values from the previous customer of the current tray
-                            int prevCustIndex = index - 1;
-                            boolean found = false;
-                            while (prevCustIndex > 0 && !found) {
-                                if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
-                                    endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
-                                    found = true;
-                                }
-                                prevCustIndex--;
-                            }
-                        } else {
-                            endPID = customer.getSequenceInChild();
-                        }
-                        UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems, startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
-
-                        manifestList.add(manifest);
+                        prevCustIndex--;
                     }
+                } else {
+                    endPID = previousCustomer.getSequenceInChild();
                 }
-                currentTrayWeight += customer.getWeight();
-                // Increases for each EOG only - PB 27/04
-                if (customer.isEog()) {
-                    currentTrayItems++;
-                }
-                previousCustomer = customer;
+                // Calculate manifest values for for the pevious tray
+                UkMailManifest manifest = new UkMailManifest(previousCustomer, currentTrayItems, startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
+                manifestList.add(manifest);
+                startPID = customer.getSequenceInChild();
+                currentTrayItems = 0;
+                currentTrayWeight = 0;
             }
+
+            if (customer.getOriginalIdx() == lastCustomer) {
+                // We are on the last customer - set values for final (current) tray
+                currentTrayWeight += customer.getWeight();
+                currentTrayItems++;
+                // End piece ID needs to be calculated for multi doc
+                if (customer.isBatchType(BatchType.MULTI)) {
+                    // we want to check values from the previous customer of the current tray
+                    int prevCustIndex = index - 1;
+                    boolean found = false;
+                    while (prevCustIndex > 0 && !found) {
+                        if (ukMailCustomers.get(prevCustIndex - 1).isEog()) {
+                            endPID = ukMailCustomers.get(prevCustIndex).getSequenceInChild();
+                            found = true;
+                        }
+                        prevCustIndex--;
+                    }
+                } else {
+                    endPID = customer.getSequenceInChild();
+                }
+                UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems, startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
+
+                manifestList.add(manifest);
+            }
+
+            currentTrayWeight += customer.getWeight();
+            // Increases for each EOG only - PB 27/04
+            if (customer.isEog()) {
+                currentTrayItems++;
+            }
+            previousCustomer = customer;
         }
+        // }
 
         for (UkMailManifest ukmm : manifestList) {
             String output = ukmm.print();
             fh.write(consignorFilePath + ukmm.getManifestFilename(), output);
             fh.write(consignorFileArchivePath + ukmm.getManifestFilename(), output);
         }
-        
+
         // LOG both the normal and unsorted manifest filepaths
-        manifestList.stream()
-                    .map(m -> m.getManifestFilename())
-                    .distinct()
-                    .forEach(path -> LOGGER.debug("Manifest File Path: {}", consignorFilePath + path));
-        
+        manifestList.stream().map(m -> m.getManifestFilename()).distinct().forEach(path -> LOGGER.debug("Manifest File Path: {}", consignorFilePath
+                + path));
+
     }
 
     public ArrayList<Customer> getUkMailCustomers(ArrayList<Customer> allCustomers) {
