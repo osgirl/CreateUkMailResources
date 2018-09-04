@@ -131,11 +131,11 @@ public class CreateUkMailResources {
                 // Cleanup from any previously run attempts
                 cleanup();
                 // Main methods
-                createUkMailManifest(ukMailCustomers);
+                createUkMailManifest();
 
                 if (processMailmark) {
                     // Also creates barcode lookup file
-                    createSOAPfile(manifestList, ukMailCustomers);
+                    createSOAPfile(manifestList);
                     // Update item numbers
                     fh.writeReplace(resourcePath + itemIdLookup, getItemId());
                     // Could be a different path for a different account number
@@ -158,13 +158,13 @@ public class CreateUkMailResources {
         fh.deleteFile(soapFileArchivePath);
     }
 
-    private void createSOAPfile(ArrayList<UkMailManifest> ukmm, ArrayList<Customer> mmCustomers) {
+    private void createSOAPfile(ArrayList<UkMailManifest> ukmm) {
         ArrayList<SoapFileEntry> sf = new ArrayList<SoapFileEntry>();
         int index = -1;
         boolean first = true;
         String itemID = getItemId();
 
-        for (Customer customer : mmCustomers) {
+        for (Customer customer : ukMailCustomers) {
 
             if (customer.isSot() || first) {
                 index++;
@@ -276,7 +276,7 @@ public class CreateUkMailResources {
     }
 
     @SuppressWarnings("null")
-    private void createUkMailManifest(ArrayList<Customer> ukMailCustomer) {
+    private void createUkMailManifest() {
         int startPID = 1;
         int endPID = 1;
         int currentTrayItems = 0;
@@ -286,15 +286,6 @@ public class CreateUkMailResources {
         int lastCustomer = ukMailCustomers.isEmpty() ? 0 : ukMailCustomers.get(ukMailCustomers.size() - 1).getOriginalIdx();
 
         int index = 0;
-
-        /* if (ukMailCustomer.size() == 1) { Customer customer = ukMailCustomer.get(0);
-         * currentTrayWeight = customer.getWeight(); currentTrayItems = 1; endPID = 1;
-         * 
-         * UkMailManifest manifest = new UkMailManifest(customer, currentTrayItems,
-         * startPID, endPID, currentTrayWeight, runNo, runDate, actualProduct);
-         * manifestList.add(manifest);
-         * 
-         * } else { */
 
         for (Customer customer : ukMailCustomers) {
             index++;
