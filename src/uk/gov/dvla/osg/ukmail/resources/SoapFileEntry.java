@@ -7,6 +7,7 @@ public class SoapFileEntry {
 	private String jid;
 	private Integer pid;
 	private String appName;
+	
 	private String batchRef;
 	private String scid;
 	private String clasz;
