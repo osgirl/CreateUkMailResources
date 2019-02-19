@@ -96,6 +96,7 @@ public class CreateUkMailResources {
 
         // Get the next item ID from the lookup file
         String resourceFileName = resourcePath + itemIdLookup;
+        
         try {
             nextItemId = Integer.parseInt(fh.getNextBagRef(resourceFileName));
             // Temp fix, MP - 06/04. Due to parallel running of old and new jars
@@ -175,7 +176,19 @@ public class CreateUkMailResources {
                 String batchRef = ukmm.get(index).getMailingId() + "_"
                         + customer.getTenDigitJid().toString().substring(0, 7) + "000_" + manifestTimestamp;
 
-                SoapFileEntry soapFileEntry = SoapFileEntryBuilder.getInstance().runNo(runNo).jid(customer.getTenDigitJid().toString()).pid(customer.getSequenceInChild()).appName(postConfig.getMmAppname()).batchRef(batchRef).scid(postConfig.getMmScid()).clasz(postConfig.getMmClass()).dps(customer.getDps()).itemId(itemID).format(postConfig.getMmXmlFormat()).machineable(postConfig.getMmMachineable()).mailType(postConfig.getMmMailType()).noOfAddressLines(getNumberOfAddressLines(customer)).postcode(formatPostCode(customer)).product(postConfig.getMmXmlProduct()).weight(customer.getWeight()).spare8(ukmm.get(index).getAltRef()).build();
+                SoapFileEntry soapFileEntry = SoapFileEntryBuilder.getInstance()
+                        .runNo(runNo)
+                        .jid(customer.getTenDigitJid().toString())
+                        .pid(customer.getSequenceInChild())
+                        .appName(postConfig.getMmAppname())
+                        .batchRef(batchRef)
+                        .scid(postConfig.getMmScid())
+                        .clasz(postConfig.getMmClass())
+                        .dps(customer.getDps())
+                        .itemId(itemID)
+                        .format(postConfig.getMmXmlFormat())
+                        .machineable(postConfig.getMmMachineable())
+                        .mailType(postConfig.getMmMailType()).noOfAddressLines(getNumberOfAddressLines(customer)).postcode(formatPostCode(customer)).product(postConfig.getMmXmlProduct()).weight(customer.getWeight()).spare8(ukmm.get(index).getAltRef()).build();
 
                 sf.add(soapFileEntry);
                 // Setting MM barcode content
@@ -206,19 +219,19 @@ public class CreateUkMailResources {
 
     private void setMMCustomerContent(Customer customer) {
         String customerContent = "";
-        if (StringUtils.isBlank(customer.getMmCustomerContent())) {
+        if (StringUtils.isBlank(customer.getCustomerContent())) {
             try {
                 DateFormat fromFormat = new SimpleDateFormat("yyyy-MM-dd");
                 DateFormat toFormat = new SimpleDateFormat("ddMMyy");
                 String date = toFormat.format(fromFormat.parse(customer.getRunDate()));
                 customerContent = date + customer.getAppName(); // E.G. 310318V11
-                customer.setMmCustomerContent(customerContent);
+                customer.setCustomerContent(customerContent);
             } catch (ParseException ex) {
-                LOGGER.fatal("Unable to read runDate");
+                LOGGER.error("Unable to read runDate");
             }
         }
 
-        customerContent = customer.getMmCustomerContent();
+        customerContent = customer.getCustomerContent();
         String str = String.format("%045d%-25.25s", new Integer(0), customerContent);
         customer.setMmBarcodeContent(str);
         // EXAMPLE
@@ -228,7 +241,7 @@ public class CreateUkMailResources {
 
     private String getMmBarcodeContent(String itemId, Customer cus) {
         return String.format("%-4.4s%-1.1s%-1.1s%-1.1s%-7.7s%-8.8s%-9.9s%-1.1s%-7.7s%-6.6s%-25.25s", postConfig.getMmUpuCountryId(), postConfig.getMmInfoType(), postConfig.getMmVersionId(), postConfig.getMmClass(), postConfig.getMmScid(), itemId, cus.getPostcode().replace(" ", "")
-                + cus.getDps(), postConfig.getMmReturnMailFlag(), postConfig.getMmReturnMailPc(), postConfig.getMmReserved(), cus.getMmCustomerContent());
+                + cus.getDps(), postConfig.getMmReturnMailFlag(), postConfig.getMmReturnMailPc(), postConfig.getMmReserved(), cus.getCustomerContent());
     }
 
     private String formatPostCode(Customer customer) {
